@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>JobPulse Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        .charts { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .chart-box { flex: 1; min-width: 400px; }
+        canvas { max-height: 400px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 JobPulse Dashboard</h1>
+    <p style="text-align: center; color: #666;">Данные собраны с hh.ru и сохранены в PostgreSQL</p>
+
+    <div class="charts">
+        <div class="chart-box">
+            <h3 style="text-align: center;">Топ-5 компаний</h3>
+            <canvas id="companiesChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3 style="text-align: center;">Топ-10 навыков</h3>
+            <canvas id="skillsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // График 1: Топ-5 компаний
+    fetch('/api/analytics/top-companies')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(item => Object.keys(item)[0]);
+            const values = data.map(item => Object.values(item)[0]);
+
+            new Chart(document.getElementById('companiesChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Количество вакансий',
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        })
+        .catch(error => console.error('Ошибка загрузки компаний:', error));
+
+    // График 2: Топ-10 навыков
+    fetch('/api/analytics/top-skills')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(item => Object.keys(item)[0]);
+            const values = data.map(item => Object.values(item)[0]);
+
+            new Chart(document.getElementById('skillsChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Количество упоминаний',
+                        data: values,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        })
+        .catch(error => console.error('Ошибка загрузки навыков:', error));
+</script>
+</body>
+</html>
