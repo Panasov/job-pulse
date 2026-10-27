@@ -1,5 +1,6 @@
 package com.jobpulse.processing;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -7,6 +8,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 
 @Service
@@ -19,6 +26,8 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
     private String chatId;
 
     private final VacancyRepository vacancyRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private long lastUpdateId = 0;
 
     public TelegramBotService(VacancyRepository vacancyRepository) {
         this.vacancyRepository = vacancyRepository;
@@ -34,13 +43,13 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
         return botToken;
     }
 
-    // Направляем запросы через Cloudflare Worker (для отправки сообщений)
+    // Направляем запросы через Cloudflare Worker
     @Override
     public String getBaseUrl() {
         return "https://telegram-proxy.moyst67.workers.dev";
     }
 
-    // Отключаем удаление вебхука, чтобы не было ошибки
+    // Отключаем удаление вебхука
     @Override
     public void clearWebhook() {
         System.out.println(">>> Пропускаем удаление вебхука (clearWebhook)");
@@ -48,15 +57,16 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
 
     @Override
     public void onUpdateReceived(Update update) {
-        // Бот не обрабатывает входящие сообщения
+        // Не используется, так как Long Polling отключен
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        // Не регистрируем бота в TelegramBotsApi, чтобы не запускать Long Polling
-        System.out.println(">>> Бот готов к отправке сообщений (Long Polling отключен)");
+        // Ничего не делаем, чтобы не запускать Long Polling
+        System.out.println(">>> Бот готов к отправке сообщений и чтению через getUpdates");
     }
 
+    // 1. Отправка ежедневного топ-5
     @Scheduled(cron = "0 0 10 * * *")
     public void sendDailyTop() {
         List<ParsedVacancy> top = vacancyRepository.findAll().stream()
@@ -71,7 +81,7 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
 
         String encodedText;
         try {
-            encodedText = java.net.URLEncoder.encode(sb.toString(), "UTF-8");
+            encodedText = URLEncoder.encode(sb.toString(), "UTF-8");
         } catch (Exception e) {
             encodedText = sb.toString();
         }
@@ -79,17 +89,13 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
         String url = "https://telegram-proxy.moyst67.workers.dev/bot" + botToken
                 + "/sendMessage?chat_id=" + chatId + "&text=" + encodedText;
 
-        // ВЫВОДИМ URL В КОНСОЛЬ, ЧТОБЫ ПРОВЕРИТЬ
-        System.out.println(">>> URL для отправки: " + url);
-
         try {
-            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(url))
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
                     .GET()
                     .build();
-
-            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
                 System.out.println(">>> Сообщение отправлено в Telegram!");
@@ -98,6 +104,46 @@ public class TelegramBotService extends TelegramLongPollingBot implements Applic
             }
         } catch (Exception e) {
             System.err.println(">>> Ошибка отправки: " + e.getMessage());
+        }
+    }
+
+    // 2. Чтение сообщений из каналов через getUpdates (каждые 5 минут)
+    @Scheduled(fixedRate = 300000)
+    public void pollChannels() {
+        String url = "https://telegram-proxy.moyst67.workers.dev/bot" + botToken
+                + "/getUpdates?offset=" + (lastUpdateId + 1) + "&timeout=10";
+
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                TelegramResponse telegramResponse = objectMapper.readValue(response.body(), TelegramResponse.class);
+                if (telegramResponse.isOk() && telegramResponse.getResult() != null) {
+                    for (TelegramUpdate update : telegramResponse.getResult()) {
+                        lastUpdateId = Math.max(lastUpdateId, update.getUpdateId());
+                        if (update.getChannelPost() != null) {
+                            String text = update.getChannelPost().getText();
+                            if (text != null && !text.isBlank()) {
+                                String title = text.split("\n")[0];
+                                String link = "https://t.me/" + update.getChannelPost().getChat().getUsername()
+                                        + "/" + update.getChannelPost().getMessageId();
+                                ParsedVacancy vacancy = new ParsedVacancy(title, "Telegram", "Не указана", link);
+                                if (!vacancyRepository.existsByLink(link)) {
+                                    vacancyRepository.save(vacancy);
+                                    System.out.println(">>> Сохранено из Telegram: " + title);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Тихо игнорируем ошибки (например, если нет новых сообщений)
         }
     }
 }

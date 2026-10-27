@@ -48,6 +48,8 @@ public class HhHtmlParser {
                     Element titleElement = element.selectFirst("[data-qa='serp-item__title']");
                     String title = titleElement != null ? titleElement.text() : "Не указано";
                     String link = titleElement != null ? titleElement.attr("href") : "";
+                    // Заменяем региональный поддомен на общий hh.ru
+                    link = link.replace("smolensk.hh.ru", "hh.ru");
 
                     Element companyElement = element.selectFirst("[data-qa='vacancy-serp__vacancy-employer']");
                     String company = companyElement != null ? companyElement.text() : "Не указана";
