@@ -8,11 +8,11 @@ public class SkillParser {
 
     // Расширенный список навыков и ключевых слов
     private static final List<String> SKILLS = Arrays.asList(
-            "Java", "Spring", "Kafka", "Docker", "SQL", "Hibernate",
-            "Kubernetes", "Microservices", "REST", "MongoDB", "RabbitMQ",
-            "Backend", "Fullstack", "Frontend", "React", "Angular",
-            "QA", "AQA", "Тестировщик", "Разработчик", "Developer",
-            "Senior", "Middle", "Junior", "Lead", "Architect"
+            "Java", "Selenium", "Selenide", "RestAssured", "JUnit", "TestNG",
+            "Appium", "Playwright", "Cucumber", "Allure", "Kafka", "Docker",
+            "SQL", "Hibernate", "Spring", "Kubernetes", "Microservices",
+            "Backend", "Fullstack", "QA", "AQA", "Тестировщик", "Разработчик",
+            "Senior", "Middle", "Junior", "Lead"
     );
 
     public static List<String> extractSkills(String title) {

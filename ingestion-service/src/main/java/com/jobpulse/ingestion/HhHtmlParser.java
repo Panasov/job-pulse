@@ -6,6 +6,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,9 +19,19 @@ public class HhHtmlParser {
     public List<ParsedVacancy> parseVacancies() {
         List<ParsedVacancy> allVacancies = new ArrayList<>();
 
+        // Ищем вакансии по автотестированию на Java по всей России (area=113)
+        String searchQuery = "автотестирование Java";
+        String encodedQuery;
+        try {
+            encodedQuery = URLEncoder.encode(searchQuery, StandardCharsets.UTF_8.toString());
+        } catch (Exception e) {
+            encodedQuery = searchQuery;
+        }
+
         for (int page = 0; page < PAGES_TO_PARSE; page++) {
             try {
-                String url = "https://hh.ru/search/vacancy?text=Java&area=1&page=" + page;
+                // area=113 — вся Россия (чтобы не привязываться к Смоленску)
+                String url = "https://hh.ru/search/vacancy?text=" + encodedQuery + "&area=113&page=" + page;
                 System.out.println(">>> Парсим страницу: " + (page + 1));
 
                 Document doc = Jsoup.connect(url)
@@ -40,13 +52,11 @@ public class HhHtmlParser {
                     Element companyElement = element.selectFirst("[data-qa='vacancy-serp__vacancy-employer']");
                     String company = companyElement != null ? companyElement.text() : "Не указана";
 
-                    // Ищем блок с зарплатой. Он содержит теги <data> и символ валюты.
+                    // Ищем блок с зарплатой (он содержит теги <data> и символ валюты)
                     String salary = "Не указана";
-                    // Ищем все элементы, внутри которых есть тег <data> с валютой
                     Elements salaryBlocks = element.select("span:has(data)");
                     for (Element block : salaryBlocks) {
                         String blockText = block.text();
-                        // Если в тексте блока есть символ валюты, это зарплата
                         if (blockText.contains("₽") || blockText.contains("$") || blockText.contains("€") || blockText.contains("руб")) {
                             salary = blockText;
                             break;
@@ -56,6 +66,7 @@ public class HhHtmlParser {
                     allVacancies.add(new ParsedVacancy(title, company, salary, link));
                 }
 
+                // Пауза, чтобы hh.ru не заблокировал за частые запросы
                 Thread.sleep(1000);
 
             } catch (Exception e) {

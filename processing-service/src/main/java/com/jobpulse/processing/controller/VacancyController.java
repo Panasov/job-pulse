@@ -4,6 +4,7 @@ import com.jobpulse.processing.ParsedVacancy;
 import com.jobpulse.processing.SalaryParser;
 import com.jobpulse.processing.SkillParser;
 import com.jobpulse.processing.VacancyRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +32,7 @@ public class VacancyController {
 
     @GetMapping("/analytics/top-companies")
     @ResponseBody
+    @Cacheable(value = "topCompanies") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
     public List<Map.Entry<String, Long>> getTopCompanies() {
         List<ParsedVacancy> all = vacancyRepository.findAll();
 
@@ -45,6 +47,7 @@ public class VacancyController {
 
     @GetMapping("/analytics/average-salary")
     @ResponseBody
+    @Cacheable(value = "averageSalary") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
     public Map<String, Object> getAverageSalary() {
         List<ParsedVacancy> all = vacancyRepository.findAll();
 
@@ -66,13 +69,12 @@ public class VacancyController {
         );
     }
 
-    // НОВЫЙ ЭНДПОИНТ: Топ-навыки
     @GetMapping("/analytics/top-skills")
     @ResponseBody
+    @Cacheable(value = "topSkills") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
     public List<Map.Entry<String, Long>> getTopSkills() {
         List<ParsedVacancy> all = vacancyRepository.findAll();
 
-        // Собираем все навыки из названий вакансий и считаем их количество
         return all.stream()
                 .flatMap(v -> SkillParser.extractSkills(v.getTitle()).stream())
                 .collect(Collectors.groupingBy(skill -> skill, Collectors.counting()))
