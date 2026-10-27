@@ -12,6 +12,8 @@ public class ParsedVacancy {
     private String title;
     private String company;
     private String salary;
+
+    @Column(unique = true) // <-- ДОБАВИЛИ ЭТУ СТРОКУ
     private String link;
 
     // Пустой конструктор нужен для JPA
@@ -24,7 +26,7 @@ public class ParsedVacancy {
         this.link = link;
     }
 
-    // Геттеры и сеттеры (или можешь использовать Lombok, если он у тебя есть)
+    // Геттеры и сеттеры
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getCompany() { return company; }

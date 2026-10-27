@@ -1,7 +1,9 @@
 package com.jobpulse.processing.controller;
 
+import com.jobpulse.processing.CompanyCountDto;
 import com.jobpulse.processing.ParsedVacancy;
 import com.jobpulse.processing.SalaryParser;
+import com.jobpulse.processing.SkillCountDto;
 import com.jobpulse.processing.SkillParser;
 import com.jobpulse.processing.VacancyRepository;
 import org.springframework.cache.annotation.Cacheable;
@@ -32,8 +34,8 @@ public class VacancyController {
 
     @GetMapping("/analytics/top-companies")
     @ResponseBody
-    @Cacheable(value = "topCompanies") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
-    public List<Map.Entry<String, Long>> getTopCompanies() {
+    @Cacheable(value = "topCompanies")
+    public List<CompanyCountDto> getTopCompanies() {
         List<ParsedVacancy> all = vacancyRepository.findAll();
 
         return all.stream()
@@ -42,37 +44,34 @@ public class VacancyController {
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .limit(5)
+                .map(entry -> new CompanyCountDto(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
     }
 
     @GetMapping("/analytics/average-salary")
     @ResponseBody
-    @Cacheable(value = "averageSalary") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
     public Map<String, Object> getAverageSalary() {
-        List<ParsedVacancy> all = vacancyRepository.findAll();
+        Double average = vacancyRepository.getAverageSalary();
 
-        List<Integer> salaries = all.stream()
-                .map(v -> SalaryParser.parseSalary(v.getSalary()))
-                .filter(s -> s != null)
-                .toList();
-
-        if (salaries.isEmpty()) {
+        if (average == null) {
             return Map.of("message", "Нет данных о зарплатах");
         }
 
-        double average = salaries.stream().mapToInt(Integer::intValue).average().orElse(0);
+        long total = vacancyRepository.count();
+        long withSalary = vacancyRepository.countBySalaryIsNotNullAndSalaryNot("Не указана");
+
         return Map.of(
-                "averageSalary", (int) average,
+                "averageSalary", average.intValue(),
                 "currency", "RUB",
-                "vacanciesWithSalary", salaries.size(),
-                "totalVacancies", all.size()
+                "vacanciesWithSalary", withSalary,
+                "totalVacancies", total
         );
     }
 
     @GetMapping("/analytics/top-skills")
     @ResponseBody
-    @Cacheable(value = "topSkills") // <-- ДОБАВИЛИ КЭШИРОВАНИЕ
-    public List<Map.Entry<String, Long>> getTopSkills() {
+    @Cacheable(value = "topSkills")
+    public List<SkillCountDto> getTopSkills() {
         List<ParsedVacancy> all = vacancyRepository.findAll();
 
         return all.stream()
@@ -81,6 +80,7 @@ public class VacancyController {
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .limit(10)
+                .map(entry -> new SkillCountDto(entry.getKey(), entry.getValue()))
                 .collect(Collectors.toList());
     }
 

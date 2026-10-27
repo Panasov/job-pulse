@@ -55,5 +55,9 @@
             <version>7.11.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
     </dependencies>
 </project>

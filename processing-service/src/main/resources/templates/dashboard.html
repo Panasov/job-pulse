@@ -35,8 +35,9 @@
     fetch('/api/analytics/top-companies')
         .then(response => response.json())
         .then(data => {
-            const labels = data.map(item => Object.keys(item)[0]);
-            const values = data.map(item => Object.values(item)[0]);
+            // Теперь данные приходят как [{"company": "Сбер", "count": 5}, ...]
+            const labels = data.map(item => item.company);
+            const values = data.map(item => item.count);
 
             new Chart(document.getElementById('companiesChart'), {
                 type: 'bar',
@@ -62,8 +63,9 @@
     fetch('/api/analytics/top-skills')
         .then(response => response.json())
         .then(data => {
-            const labels = data.map(item => Object.keys(item)[0]);
-            const values = data.map(item => Object.values(item)[0]);
+            // Теперь данные приходят как [{"skill": "Java", "count": 88}, ...]
+            const labels = data.map(item => item.skill);
+            const values = data.map(item => item.count);
 
             new Chart(document.getElementById('skillsChart'), {
                 type: 'bar',
