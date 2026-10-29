@@ -8,10 +8,9 @@ import org.springframework.stereotype.Component;
 public class JobCollector {
 
     private final HhHtmlParser hhHtmlParser;
-    private final TelegramParser telegramParser; // <-- ДОБАВИЛИ ПОЛЕ
+    private final TelegramParser telegramParser;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    // Spring Boot сам внедрит оба парсера и KafkaTemplate
     public JobCollector(HhHtmlParser hhHtmlParser,
                         TelegramParser telegramParser,
                         KafkaTemplate<String, Object> kafkaTemplate) {
@@ -31,12 +30,12 @@ public class JobCollector {
             hhVacancies.forEach(v -> kafkaTemplate.send("raw-vacancies", v));
         }
 
-        // 2. Собираем из Telegram
-        var tgVacancies = telegramParser.parseVacancies();
-        if (!tgVacancies.isEmpty()) {
-            System.out.println(">>> Получено из Telegram: " + tgVacancies.size());
-            tgVacancies.forEach(v -> kafkaTemplate.send("raw-vacancies", v));
-        }
+        // 2. Собираем из Telegram (ВРЕМЕННО ОТКЛЮЧЕНО)
+        // var tgVacancies = telegramParser.parseVacancies();
+        // if (!tgVacancies.isEmpty()) {
+        //     System.out.println(">>> Получено из Telegram: " + tgVacancies.size());
+        //     tgVacancies.forEach(v -> kafkaTemplate.send("raw-vacancies", v));
+        // }
 
         System.out.println(">>> Все вакансии отправлены в Kafka!");
     }

@@ -44,7 +44,7 @@ public class TelegramChannelListener extends TelegramLongPollingBot {
                 String link = "https://t.me/" + message.getChat().getUserName() + "/" + message.getMessageId();
 
                 // Сохраняем в базу (или отправляем в Kafka)
-                ParsedVacancy vacancy = new ParsedVacancy(title, "Telegram", "Не указана", link);
+                ParsedVacancy vacancy = new ParsedVacancy(title, "Telegram", "Не указана", link, text);
                 vacancyRepository.save(vacancy);
                 System.out.println(">>> Сохранено в БД из Telegram!");
             }

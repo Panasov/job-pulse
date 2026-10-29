@@ -4,5 +4,6 @@ public record ParsedVacancy(
         String title,
         String company,
         String salary,
-        String link
+        String link,
+        String description
 ) {}
